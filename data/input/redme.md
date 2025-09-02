@@ -1,0 +1,1 @@
+Put "jpeg" or "tif" and "xml" files to this folder

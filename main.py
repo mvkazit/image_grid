@@ -1,4 +1,6 @@
 import os
+import time
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import xml.etree.ElementTree as ET
@@ -10,6 +12,10 @@ Image.MAX_IMAGE_PIXELS = None
 MM_TO_INCHES = 1/25.4
 M_TO_INCHES = 39.37
 M_TO_MKM = 1.0e+6
+
+EXT_JPG = '.jpeg'
+EXT_TIF = '.tif'
+EXT_XML = '.xml'
 
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 INPUT_PATH = f"{ROOT_PATH}/data/input"
@@ -115,7 +121,7 @@ def tiff_to_jpeg(input_tiff, output_jpeg):
     pil_image = Image.fromarray(tiff_data, mode=mode)
     pil_image.save(output_jpeg, quality=90)
 
-    print(f"Save to {output_jpeg}.")
+    print(f"Save to {output_jpeg}")
 
 if __name__ == '__main__' :
     print(f"Input path: {INPUT_PATH}")
@@ -124,11 +130,13 @@ if __name__ == '__main__' :
     input_files = get_all_files(INPUT_PATH)
     for file_name in input_files:
         image_path = f"{INPUT_PATH}/{file_name}"
-        if file_name.endswith(".tif"):
-            if not ((file_name.replace('.tif', '.jpg') in input_files) or (file_name.replace('.tif', '.jpge') in input_files)):
-                tiff_to_jpeg(image_path, f"{INPUT_PATH}/{file_name.replace('.tif', '.jpeg')}")
-        if file_name.endswith(".jpeg"):
-            xml_path = f"{INPUT_PATH}/{file_name.replace('.jpeg', '.xml')}"
+        if file_name.endswith(EXT_TIF):
+            if not (file_name.replace(EXT_TIF, EXT_JPG) in input_files):
+                tiff_to_jpeg(image_path, f"{INPUT_PATH}/{file_name.replace(EXT_TIF, EXT_JPG)}")
+                input_files.append(f"{file_name.replace(EXT_TIF, EXT_JPG)}")
+                time.sleep(1)
+        if file_name.endswith(EXT_JPG):
+            xml_path = f"{INPUT_PATH}/{file_name.replace(EXT_JPG, EXT_XML)}"
             print(f"Reading JPEG : {image_path}")
             print(f"Reading XML : {xml_path}")
             img_props = get_image_dimensions(xml_path, image_path)
