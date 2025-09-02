@@ -20,4 +20,4 @@ def extract_tifffile_metadata(filepath):
         print(f"An error occurred: {e}")
 
 if __name__ == '__main__' :
-    extract_tifffile_metadata('/Users/mvkazit/src/image_grid/data/WT.995.M.40X.08.26.2025_WT.995.M.CortexMotor B.08.26.2025.tif')
+    extract_tifffile_metadata('/data/input_1/WT.995.M.40X.08.26.2025_WT.995.M.CortexMotor B.08.26.2025.tif')
