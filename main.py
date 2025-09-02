@@ -1,15 +1,26 @@
 import os
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from PIL import Image, ExifTags
+import matplotlib.ticker as ticker
+import xml.etree.ElementTree as ET
+from PIL import Image
+import numpy as np
 
 Image.MAX_IMAGE_PIXELS = None
 
-METER_TO_INCH = 39.3701
+MM_TO_INCHES = 1/25.4
+M_TO_INCHES = 39.37
+M_TO_MKM = 1.0e+6
 
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-INPUT_PATH = f"{ROOT_PATH}/data/input"
+INPUT_PATH = f"{ROOT_PATH}/data/input_1"
 OUTPUT_PATH = f"{ROOT_PATH}/data/output"
+
+def convert_to_inches(value, from_units="m"):
+    if from_units == "mm":
+        return value * MM_TO_INCHES
+    if from_units == "m":
+        return value * M_TO_INCHES
 
 def get_all_files(input_path):
     try:
@@ -19,48 +30,90 @@ def get_all_files(input_path):
         print(f"Can't get list of files : {e}")
     return []
 
-def add_grid_to_jpeg_matplotlib(image_path, output_path):
+def add_grid_to_jpeg_matplotlib(image_path, output_path, imp_prop):
+    GRID_SPACING = 100
+    DPI = 1200
     try:
-        img = mpimg.imread(image_path)
-        plt.imshow(img)
-        plt.axis("on")
-        plt.grid(color="red", linestyle="--", linewidth=0.5)
-        plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        img = Image.open(image_path)
+        img_array = np.array(img)
+        fig, ax = plt.subplots()
 
-def print_meta_data(imp_file):
+        physical_width = imp_prop["width"]["real"] * M_TO_MKM
+        physical_height = imp_prop["height"]["real"] * M_TO_MKM
+
+        extent = [0, physical_width, 0, physical_height]
+        ax.imshow(img_array, extent=extent, origin='lower')
+
+        major_tick = ticker.MultipleLocator(base=GRID_SPACING)
+        ax.xaxis.set_major_locator(major_tick)
+        ax.yaxis.set_major_locator(major_tick)
+
+        ax.set_xlabel('mkm')
+        ax.tick_params(axis='x', labelrotation=90, labelsize=7)
+        ax.tick_params(axis='y',  labelsize=7)
+
+        ax.set_ylabel('mkm')
+        ax.set_title('10 mkm Grid Overlay')
+        ax.grid(which='major', linestyle='--', color='red', alpha=0.6)
+        #plt.show()
+
+        plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    except Exception as e:
+        print(f"Can't build grid: {e}")
+
+def get_image_dimensions(xml_path, image_path):
     try:
-        img = Image.open(imp_file)
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        dimensions = root.find('Image/ImageDescription/Dimensions')
+        prop = [x .attrib for x in dimensions]
 
-        if img.getexif():
-            exif = {ExifTags.TAGS[k]: v for k, v in img.getexif().items() if k in ExifTags.TAGS}
-        print(exif)
+        img = Image.open(image_path)
+        width_real = max(prop[0]['Length'], prop[1]['Length'])
+        height_real = min(prop[0]['Length'], prop[1]['Length'])
+        if img.width < img.height:
+            width_real, height_real = height_real, width_real
+
+        return {
+            "width" : {
+                "real" : float(width_real),
+                "unit" : prop[0 if width_real == prop[0]['Length'] else 1]["Unit"],
+                "pixels" : img.width
+            },
+            "height" : {
+                "real" : float(height_real),
+                "unit" : prop[0 if height_real == prop[0]['Length'] else 1]["Unit"],
+                "pixels": img.height
+            }
+        }
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Failed to read XML file: {e}")
 
-'''
-import cv2
-import tifffile
+def image_crop(image_path, output_path, imp_prop, left, upper, right, lower):
+    img = Image.open(image_path)
 
-# Example function
-def rescale_image(path, output_path, scale_factor):
-    img = tifffile.imread(path)
-    new_size = (int(img.shape[1] * scale_factor), int(img.shape[0] * scale_factor))
-    resized = cv2.resize(img, new_size, interpolation=cv2.INTER_AREA)
-    tifffile.imwrite(output_path, resized)
+    physical_width = imp_prop["width"]["real"] * M_TO_MKM
+    physical_height = imp_prop["height"]["real"] * M_TO_MKM
+    pixel_per_mkm = imp_prop["width"]["pixels"]  / physical_width
 
-# Example usage
-rescale_image("image_025um.tif", "image_rescaled.tif", 0.25)
-'''
+
+    cropped_region = (left*pixel_per_mkm, upper*pixel_per_mkm, right*pixel_per_mkm, lower*pixel_per_mkm)
+    cropped_img = img.crop(cropped_region)
+    cropped_img.save(output_path)
 
 if __name__ == '__main__' :
     print(f"Input path: {INPUT_PATH}")
     print(f"Output path : {OUTPUT_PATH}")
 
     input_files = get_all_files(INPUT_PATH)
-    for f_img in input_files:
-        image_path = f"{INPUT_PATH}/{f_img}"
-        print(f"Processing : {f_img}")
-       #  print_meta_data(image_path)
-        add_grid_to_jpeg_matplotlib(image_path, f"{OUTPUT_PATH}/{f_img}")
+    for file_name in input_files:
+        if file_name.endswith((".jpeg", ".jpg")) :
+            image_path = f"{INPUT_PATH}/{file_name}"
+            xml_path = f"{INPUT_PATH}/{file_name.replace('.jpeg', '.xml')}"
+            print(f"Reading JPEG : {image_path}")
+            print(f"Reading XML : {xml_path}")
+            img_props = get_image_dimensions(xml_path, image_path)
+            print(img_props)
+            add_grid_to_jpeg_matplotlib(image_path, f"{OUTPUT_PATH}/{file_name}", img_props)
+            # getting sub image - (200, 1700) to (800, 1400)
+            image_crop(image_path, f"{OUTPUT_PATH}/crop_{file_name}", img_props, 200, 1400, 800, 1700)
