@@ -5,6 +5,8 @@ from PIL import Image, ExifTags
 
 Image.MAX_IMAGE_PIXELS = None
 
+METER_TO_INCH = 39.3701
+
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 INPUT_PATH = f"{ROOT_PATH}/data/input"
 OUTPUT_PATH = f"{ROOT_PATH}/data/output"
@@ -36,6 +38,21 @@ def print_meta_data(imp_file):
         print(exif)
     except Exception as e:
         print(f"An error occurred: {e}")
+
+'''
+import cv2
+import tifffile
+
+# Example function
+def rescale_image(path, output_path, scale_factor):
+    img = tifffile.imread(path)
+    new_size = (int(img.shape[1] * scale_factor), int(img.shape[0] * scale_factor))
+    resized = cv2.resize(img, new_size, interpolation=cv2.INTER_AREA)
+    tifffile.imwrite(output_path, resized)
+
+# Example usage
+rescale_image("image_025um.tif", "image_rescaled.tif", 0.25)
+'''
 
 if __name__ == '__main__' :
     print(f"Input path: {INPUT_PATH}")
