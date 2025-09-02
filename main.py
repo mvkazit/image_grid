@@ -46,15 +46,17 @@ def add_grid_to_jpeg_matplotlib(image_path, output_path, imp_prop):
 
         major_tick = ticker.MultipleLocator(base=GRID_SPACING)
         ax.xaxis.set_major_locator(major_tick)
-        ax.yaxis.set_major_locator(major_tick)
-
         ax.set_xlabel('mkm')
         ax.tick_params(axis='x', labelrotation=90, labelsize=7)
-        ax.tick_params(axis='y',  labelsize=7)
 
+        ax.yaxis.set_major_locator(major_tick)
+        ax.tick_params(axis='y',  labelsize=7)
         ax.set_ylabel('mkm')
+        ax.invert_yaxis()
+
         ax.set_title('10 mkm Grid Overlay')
         ax.grid(which='major', linestyle='--', color='red', alpha=0.6)
+
         #plt.show()
 
         plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
@@ -93,9 +95,7 @@ def image_crop(image_path, output_path, imp_prop, left, upper, right, lower):
     img = Image.open(image_path)
 
     physical_width = imp_prop["width"]["real"] * M_TO_MKM
-    physical_height = imp_prop["height"]["real"] * M_TO_MKM
     pixel_per_mkm = imp_prop["width"]["pixels"]  / physical_width
-
 
     cropped_region = (left*pixel_per_mkm, upper*pixel_per_mkm, right*pixel_per_mkm, lower*pixel_per_mkm)
     cropped_img = img.crop(cropped_region)
@@ -116,4 +116,4 @@ if __name__ == '__main__' :
             print(img_props)
             add_grid_to_jpeg_matplotlib(image_path, f"{OUTPUT_PATH}/{file_name}", img_props)
             # getting sub image - (200, 1700) to (800, 1400)
-            image_crop(image_path, f"{OUTPUT_PATH}/crop_{file_name}", img_props, 200, 1400, 800, 1700)
+            image_crop(image_path, f"{OUTPUT_PATH}/crop_{file_name}", img_props, 1000, 500, 1700, 800)
