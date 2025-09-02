@@ -1,10 +1,9 @@
 import os
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import matplotlib.ticker as ticker
 import xml.etree.ElementTree as ET
+import tifffile
 from PIL import Image
-import numpy as np
 
 Image.MAX_IMAGE_PIXELS = None
 
@@ -13,7 +12,7 @@ M_TO_INCHES = 39.37
 M_TO_MKM = 1.0e+6
 
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-INPUT_PATH = f"{ROOT_PATH}/data/input_1"
+INPUT_PATH = f"{ROOT_PATH}/data/input"
 OUTPUT_PATH = f"{ROOT_PATH}/data/output"
 
 def convert_to_inches(value, from_units="m"):
@@ -35,14 +34,13 @@ def add_grid_to_jpeg_matplotlib(image_path, output_path, imp_prop):
     DPI = 1200
     try:
         img = Image.open(image_path)
-        img_array = np.array(img)
         fig, ax = plt.subplots()
 
         physical_width = imp_prop["width"]["real"] * M_TO_MKM
         physical_height = imp_prop["height"]["real"] * M_TO_MKM
 
         extent = [0, physical_width, 0, physical_height]
-        ax.imshow(img_array, extent=extent, origin='lower')
+        ax.imshow(img, extent=extent, origin='lower')
 
         major_tick = ticker.MultipleLocator(base=GRID_SPACING)
         ax.xaxis.set_major_locator(major_tick)
@@ -101,14 +99,35 @@ def image_crop(image_path, output_path, imp_prop, left, upper, right, lower):
     cropped_img = img.crop(cropped_region)
     cropped_img.save(output_path)
 
+def tiff_to_jpeg(input_tiff, output_jpeg):
+    tiff_data = tifffile.imread(input_tiff)
+    print(f"Read {input_tiff}")
+    if tiff_data.ndim == 3 and tiff_data.shape[2] == 4: # RGBA
+        tiff_data = tiff_data[:, :, :3] # Drop alpha channel
+        mode = 'RGB'
+    elif tiff_data.ndim == 3 and tiff_data.shape[2] == 3: # RGB
+        mode = 'RGB'
+    elif tiff_data.ndim == 2: # Grayscale
+        mode = 'L'
+    else:
+        raise ValueError("Unsupported TIFF image format for conversion to JPEG.")
+
+    pil_image = Image.fromarray(tiff_data, mode=mode)
+    pil_image.save(output_jpeg, quality=90)
+
+    print(f"Save to {output_jpeg}.")
+
 if __name__ == '__main__' :
     print(f"Input path: {INPUT_PATH}")
     print(f"Output path : {OUTPUT_PATH}")
 
     input_files = get_all_files(INPUT_PATH)
     for file_name in input_files:
-        if file_name.endswith((".jpeg", ".jpg")) :
-            image_path = f"{INPUT_PATH}/{file_name}"
+        image_path = f"{INPUT_PATH}/{file_name}"
+        if file_name.endswith(".tif"):
+            if not ((file_name.replace('.tif', '.jpg') in input_files) or (file_name.replace('.tif', '.jpge') in input_files)):
+                tiff_to_jpeg(image_path, f"{INPUT_PATH}/{file_name.replace('.tif', '.jpeg')}")
+        if file_name.endswith(".jpeg"):
             xml_path = f"{INPUT_PATH}/{file_name.replace('.jpeg', '.xml')}"
             print(f"Reading JPEG : {image_path}")
             print(f"Reading XML : {xml_path}")
