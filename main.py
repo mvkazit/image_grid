@@ -42,6 +42,10 @@ def add_grid_to_jpeg_matplotlib(image_path, output_path, imp_prop):
         img = Image.open(image_path)
         fig, ax = plt.subplots()
 
+        if not (imp_prop["width"]["unit"] == "m" and imp_prop["height"]["unit"]  == "m"):
+            print("Error !! Unknow Units")
+            exit(0)
+
         physical_width = imp_prop["width"]["real"] * M_TO_MKM
         physical_height = imp_prop["height"]["real"] * M_TO_MKM
 
