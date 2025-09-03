@@ -12,6 +12,7 @@ Image.MAX_IMAGE_PIXELS = None
 MM_TO_INCHES = 1/25.4
 M_TO_INCHES = 39.37
 M_TO_MKM = 1.0e+6
+GRID_SPACING = 100
 
 EXT_JPG = '.jpeg'
 EXT_TIF = '.tif'
@@ -36,7 +37,6 @@ def get_all_files(input_path):
     return []
 
 def add_grid_to_jpeg_matplotlib(image_path, output_path, imp_prop):
-    GRID_SPACING = 100
     DPI = 1200
     try:
         img = Image.open(image_path)
@@ -99,15 +99,27 @@ def get_image_dimensions(xml_path, image_path):
     except Exception as e:
         print(f"Failed to read XML file: {e}")
 
-def image_crop(image_path, output_path, imp_prop, left, upper, right, lower):
-    img = Image.open(image_path)
+def save_crop(img, image_path, x, y, idx):
+    output_path = image_path.replace(EXT_JPG, f"_crop_{x}_{y}_{idx}{EXT_JPG}")
+    print(f"Saving {output_path}")
+    img.save(output_path)
+
+def image_crop(input_file, output_file, imp_prop, x, y):
+
+    img = Image.open(input_file)
 
     physical_width = imp_prop["width"]["real"] * M_TO_MKM
     pixel_per_mkm = imp_prop["width"]["pixels"]  / physical_width
+    map = [[1,1,1,1], [1,1,0,0],[0,1,1,0],[1,0,0,1], [0,0,1,1]]
 
-    cropped_region = (left*pixel_per_mkm, upper*pixel_per_mkm, right*pixel_per_mkm, lower*pixel_per_mkm)
-    cropped_img = img.crop(cropped_region)
-    cropped_img.save(output_path)
+    for i in range(0, 5):
+        cropped_region = ((x - GRID_SPACING * map[i][0]) * pixel_per_mkm,
+                          (y - GRID_SPACING * map[i][1]) * pixel_per_mkm,
+                          (x + GRID_SPACING * map[i][2]) * pixel_per_mkm,
+                          (y + GRID_SPACING * map[i][3]) * pixel_per_mkm)
+        cropped_img = img.crop(cropped_region)
+        save_crop(cropped_img, output_file, x, y, i)
+
 
 def tiff_to_jpeg(input_tiff, output_jpeg):
     tiff_data = tifffile.imread(input_tiff)
@@ -146,5 +158,7 @@ if __name__ == '__main__' :
             img_props = get_image_dimensions(xml_path, image_path)
             print(img_props)
             add_grid_to_jpeg_matplotlib(image_path, f"{OUTPUT_PATH}/{file_name}", img_props)
-            # getting sub image - (200, 1700) to (800, 1400)
-            image_crop(image_path, f"{OUTPUT_PATH}/crop_{file_name}", img_props, 1000, 500, 1700, 800)
+
+            points = [[700, 800],[1500, 700]]
+            for p in points:
+                image_crop(image_path,  f"{OUTPUT_PATH}/{file_name}", img_props, p[0], p[1])
