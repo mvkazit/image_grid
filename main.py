@@ -6,6 +6,8 @@ import matplotlib.ticker as ticker
 import xml.etree.ElementTree as ET
 import tifffile
 from PIL import Image
+import numpy as np
+from matplotlib.pyplot import figure
 
 Image.MAX_IMAGE_PIXELS = None
 
@@ -40,32 +42,33 @@ def add_grid_to_jpeg_matplotlib(image_path, output_path, imp_prop):
     DPI = 1200
     try:
         img = Image.open(image_path)
-        fig, ax = plt.subplots()
 
         if not (imp_prop["width"]["unit"] == "m" and imp_prop["height"]["unit"]  == "m"):
             print("Error !! Unknow Units")
             exit(0)
 
-        physical_width = imp_prop["width"]["real"] * M_TO_MKM
-        physical_height = imp_prop["height"]["real"] * M_TO_MKM
+        physical_width = int(imp_prop["width"]["real"] * M_TO_MKM)
+        physical_height = int(imp_prop["height"]["real"] * M_TO_MKM)
+        fig, ax = plt.subplots()
 
         extent = [0, physical_width, 0, physical_height]
+        print(extent)
         ax.imshow(img, extent=extent, origin='lower')
 
         major_tick = ticker.MultipleLocator(base=GRID_SPACING)
         ax.xaxis.set_major_locator(major_tick)
         ax.set_xlabel('mkm')
         ax.tick_params(axis='x', labelrotation=90, labelsize=7)
+        ax.set_xticks(np.arange(0, int(physical_width), GRID_SPACING))
 
         ax.yaxis.set_major_locator(major_tick)
         ax.tick_params(axis='y',  labelsize=7)
         ax.set_ylabel('mkm')
-        ax.invert_yaxis()
+        ax.set_yticks(np.arange(0, int(physical_height), GRID_SPACING))
 
         ax.set_title('10 mkm Grid Overlay')
         ax.grid(which='major', linestyle='--', color='red', alpha=0.6)
 
-        #plt.show()
 
         plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
     except Exception as e:
@@ -162,6 +165,9 @@ if __name__ == '__main__' :
             print(img_props)
             add_grid_to_jpeg_matplotlib(image_path, f"{OUTPUT_PATH}/{file_name}", img_props)
 
+            '''
             points = [[700, 800],[1500, 700]]
             for p in points:
                 image_crop(image_path,  f"{OUTPUT_PATH}/{file_name}", img_props, p[0], p[1])
+            '''
+    print('The End')
