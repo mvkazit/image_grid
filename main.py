@@ -111,6 +111,9 @@ def image_crop(input_file, output_file, imp_prop, x, y):
     physical_width = imp_prop["width"]["real"] * M_TO_MKM
     pixel_per_mkm = imp_prop["width"]["pixels"]  / physical_width
     map = [[1,1,1,1], [1,1,0,0],[0,1,1,0],[1,0,0,1], [0,0,1,1]]
+    # 0 - all four regions
+    # 1, 2
+    # 3, 4
 
     for i in range(0, 5):
         cropped_region = ((x - GRID_SPACING * map[i][0]) * pixel_per_mkm,
